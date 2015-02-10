@@ -1,0 +1,20 @@
+{
+  "title": "JPM Addon Watch Reload",
+  "name": "jpm-addon-watch",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "author": "Luca Greco",
+  "engines": {
+    "firefox": ">=33.0a1",
+    "fennec": ">=33.0a1"
+  },
+  "license": "MPL2.0",
+  "dependencies": {
+     "jpm-addon": "rpl/jpm-addon#feature/jpm-dependency",
+     "jpm": "0.0.23"
+  },
+  "bin": {
+    "jpm-addon-watch": "./bin/jpm-addon-watch"
+  }
+}
