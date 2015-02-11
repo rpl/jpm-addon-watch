@@ -10,6 +10,17 @@ var xpi = require("jpm/lib/xpi");
 var console = require("jpm/lib/utils").console;
 var program = require("jpm/node_modules/commander");
 
+var originalDir = process.cwd();
+process.chdir(path.join(path.dirname(module.filename), '..'));
+
+process.on('exit', function backToOriginalDir() {
+  process.chdir(originalDir);
+});
+process.on('uncaughtException', function (e) {
+  console.error(e);
+  process.exit();
+});
+
 program
   .version(VERSION)
   .option("-b, --binary <path>", "Path of Firefox binary to use.")
@@ -32,40 +43,35 @@ program
 
 program
   .command("run [addon_path]")
+  .option("--watch-file <path>", "Watch for changes on the defined path instead of the addon root dir.")
   .option("--watch-interval <milliseconds>", "Watch interval in milliseconds.")
   .description("Install, run and livereload in Firefox the specified addon")
   .action(function (addonDir, options) {
+    // addonDir defaults to current working dir
+    addonDir = addonDir || originalDir;
+
     cmd.prepare("run", program, function(manifest) {
       console.log("JPM WATCH", addonDir, options.watchInterval);
 
-      var addonManifest = require(path.join(addonDir,"package.json"));
+      var pathManifest = path.join(addonDir,"package.json");
+      var addonManifest = require(pathManifest);
       var watchInterval = options.watchInterval;
+      var watchFile = options.watchInterval;
 
       console.log("WATCHED ADDON MANIFEST", addonManifest);
 
       var addonId = addonManifest.id || "@" + addonManifest.name;
-      process.env["WATCH_ADDON_ID"] = addonId;
-      process.env["WATCH_ADDON_PATH"] = addonDir;
+      process.env["JPM_WATCH_ADDON_ID"] = addonId;
+      process.env["JPM_WATCH_ADDON_PATH"] = addonDir;
+      process.env["JPM_WATCH_FILE"] = watchFile || pathManifest;
+
       if (watchInterval) {
-        process.env["WATCH_INTERVAL"] = watchInterval;
+        process.env["JPM_WATCH_INTERVAL"] = watchInterval;
       }
 
       run(manifest, program).then(null, console.error);
     })();
   });
-
-program
-  .command("xpi")
-  .description("Bundle the addon into an .xpi file")
-  .action(cmd.prepare("xpi", program, function (manifest) {
-    xpi(manifest, program).then(function (xpiPath) {
-      console.log("Successfully created xpi at " + xpiPath);
-    }, function (reason) {
-      console.error("xpi creation failed: " + reason);
-    });
-  }));
-
-process.cwd(path.join(path.dirname(module.filename), '..'));
 
 program.parse(process.argv);
 
