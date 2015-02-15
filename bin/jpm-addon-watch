@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 var path = require("path");
+var fs = require("fs");
 
 var VERSION = require("../package.json").version;
 
@@ -42,10 +43,10 @@ program
   .option("--retro", "In development flag for transitioning to new style addons; forces the lack of install.rdf/bootstrap.js creation regardless of what engine versions are running");
 
 program
-  .command("run [addon_path]")
+  .command("run-mount [addon_path]")
   .option("--watch-file <path>", "Watch for changes on the defined path instead of the addon root dir.")
   .option("--watch-interval <milliseconds>", "Watch interval in milliseconds.")
-  .description("Install, run and livereload in Firefox the specified addon")
+  .description("Mount, run and livereload in Firefox the specified addon dir")
   .action(function (addonDir, options) {
     // addonDir defaults to current working dir
     addonDir = addonDir || originalDir;
@@ -56,7 +57,7 @@ program
       var pathManifest = path.join(addonDir,"package.json");
       var addonManifest = require(pathManifest);
       var watchInterval = options.watchInterval;
-      var watchFile = options.watchInterval;
+      var watchFile = options.watchFile;
 
       console.log("WATCHED ADDON MANIFEST", addonManifest);
 
@@ -64,6 +65,7 @@ program
       process.env["JPM_WATCH_ADDON_ID"] = addonId;
       process.env["JPM_WATCH_ADDON_PATH"] = addonDir;
       process.env["JPM_WATCH_FILE"] = watchFile || pathManifest;
+      process.env["JPM_WATCH_MODE"] = "mount";
 
       if (watchInterval) {
         process.env["JPM_WATCH_INTERVAL"] = watchInterval;
@@ -72,6 +74,47 @@ program
       run(manifest, program).then(null, console.error);
     })();
   });
+
+program
+  .command("run-xpi [addon_path]")
+  .option("--watch-file <xpi_file_path>", "Watch for changes on the defined xpi file (defaults to 'addon_path/@addonname.xpi')")
+  .option("--watch-interval <milliseconds>", "Watch interval in milliseconds.")
+  .description("Install, run and livereload in Firefox the specified addon xpi")
+  .action(function (addonDir, options) {
+    // addonDir defaults to current working dir
+    addonDir = addonDir || originalDir;
+
+    cmd.prepare("run", program, function(manifest) {
+      console.log("JPM WATCH", addonXPIPath, options.watchInterval);
+
+      var pathManifest = path.join(addonDir,"package.json");
+      var addonManifest = require(pathManifest);
+      var watchInterval = options.watchInterval;
+      var addonId = addonManifest.id || "@" + addonManifest.name;
+
+      var addonXPIPath = options.watchFile || path.join(addonDir, addonId + ".xpi");
+
+      if (!fs.existsSync(addonXPIPath)) {
+        console.error("addon xpi not found: " + addonXPIPath);
+        return;
+      }
+
+      console.log("WATCHED ADDON MANIFEST", addonManifest);
+
+      process.env["JPM_WATCH_ADDON_ID"] = addonId;
+      process.env["JPM_WATCH_ADDON_PATH"] = addonDir;
+      process.env["JPM_WATCH_FILE"] = addonXPIPath;
+      process.env["JPM_WATCH_MODE"] = "xpi";
+
+      if (watchInterval) {
+        process.env["JPM_WATCH_INTERVAL"] = watchInterval;
+      }
+
+      run(manifest, program).then(null, console.error);
+    })();
+  });
+
+
 
 program.parse(process.argv);
 
